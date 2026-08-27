@@ -4,10 +4,13 @@ import com.chatling.common.model.ApiKey;
 import com.chatling.common.model.ChatAudit;
 import com.chatling.common.model.ModelConfig;
 import com.chatling.common.model.UsageDaily;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import javax.annotation.Resource;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,13 +18,12 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
+@NoArgsConstructor
+@AllArgsConstructor
 public class ChatlingDao {
 
-    private final JdbcTemplate jdbcTemplate;
-
-    public ChatlingDao(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
-    }
+    @Resource
+    private JdbcTemplate jdbcTemplate;
 
     // ==================== API Key ====================
 
@@ -103,19 +105,24 @@ public class ChatlingDao {
         return jdbcTemplate.query(sql, new BeanPropertyRowMapper<>(ChatAudit.class), limit);
     }
 
-    public void recordDailyUsage(String ownerName, String department, String apiKey, String modelName, int promptTokens, int completionTokens) {
-        String today = LocalDate.now().toString();
-        int totalTokens = promptTokens + completionTokens;
+    public void recordDailyUsage(UsageDaily usage) {
+        String today = (usage.getStatDate() != null && !usage.getStatDate().isEmpty())
+                ? usage.getStatDate()
+                : LocalDate.now().toString();
+        long promptToks = usage.getPromptTokens() != null ? usage.getPromptTokens() : 0L;
+        long compToks = usage.getCompletionTokens() != null ? usage.getCompletionTokens() : 0L;
+        long totalTokens = usage.getTotalTokens() != null ? usage.getTotalTokens() : (promptToks + compToks);
+
         String checkSql = "SELECT count(*) FROM t_usage_daily WHERE stat_date = ? AND api_key = ? AND model_name = ?";
-        Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, today, apiKey, modelName);
+        Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, today, usage.getApiKey(), usage.getModelName());
         if (count != null && count > 0) {
             String updateSql = "UPDATE t_usage_daily SET request_count = request_count + 1, prompt_tokens = prompt_tokens + ?, " +
                     "completion_tokens = completion_tokens + ?, total_tokens = total_tokens + ? WHERE stat_date = ? AND api_key = ? AND model_name = ?";
-            jdbcTemplate.update(updateSql, promptTokens, completionTokens, totalTokens, today, apiKey, modelName);
+            jdbcTemplate.update(updateSql, promptToks, compToks, totalTokens, today, usage.getApiKey(), usage.getModelName());
         } else {
             String insertSql = "INSERT INTO t_usage_daily (stat_date, owner_name, department, api_key, model_name, request_count, prompt_tokens, completion_tokens, total_tokens) " +
                     "VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)";
-            jdbcTemplate.update(insertSql, today, ownerName, department, apiKey, modelName, promptTokens, completionTokens, totalTokens);
+            jdbcTemplate.update(insertSql, today, usage.getOwnerName(), usage.getDepartment(), usage.getApiKey(), usage.getModelName(), promptToks, compToks, totalTokens);
         }
     }
 

@@ -22,9 +22,10 @@ public class ModelLoadBalancer {
 
     // 节点熔断截止时间戳: "modelName:url" -> circuitOpenUntilTimestamp
     private final Map<String, Long> breakerDeadlines = new ConcurrentHashMap<>();
-
-    private static final int MAX_CONSECUTIVE_FAILURES = 3; // 连续失败3次触发熔断
-    private static final long CIRCUIT_BREAK_DURATION_MS = 30000; // 熔断拉黑 30 秒
+    // 连续失败3次触发熔断
+    private static final int MAX_CONSECUTIVE_FAILURES = 3;
+    // 熔断拉黑 30 秒
+    private static final long CIRCUIT_BREAK_DURATION_MS = 30000;
 
     /**
      * 从配置的逗号分隔 BaseURL 列表中，选出一个健康的可用节点 (支持多实例加权轮询)

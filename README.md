@@ -19,7 +19,38 @@ chatling-gateway/ (Maven 根父工程)
 
 ---
 
-## 二、 核心功能特性
+## 二、 网关处理流水线 (Gateway Request Pipeline)
+
+```mermaid
+%%{init: {'flowchart': {'curve': 'ortho'}}}%%
+flowchart TD
+    classDef default fill:#1e293b,stroke:#475569,stroke-width:1.5px,color:#f8fafc;
+    classDef entry fill:#0f172a,stroke:#3b82f6,stroke-width:2px,color:#93c5fd;
+    classDef check fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#ffffff;
+    classDef reject fill:#450a0a,stroke:#ef4444,stroke-width:1.5px,color:#fca5a5;
+    classDef hit fill:#064e3b,stroke:#10b981,stroke-width:1.5px,color:#6ee7b7;
+
+    Req["POST /v1/chat/completions"]:::entry --> S1["1. API Key 认证与鉴权"]:::check
+    S1 --> S2["2. 总配额检查 (usedQuota >= totalQuota?)"]:::check
+
+    S2 -->|超出配额| E1["❌ 429 Total Quota Exceeded"]:::reject
+    S2 -->|正常| S3["3. 敏感词安全过滤 (Guardrails)"]:::check
+
+    S3 -->|命中违规| E2["❌ 400 阻断"]:::reject
+    S3 -->|放行| S4["4. Prompt 精准缓存检索 (Exact Cache)"]:::check
+
+    S4 -->|✅ 命中缓存| E3["⚡ 0 Token 毫秒级流式回放"]:::hit
+    S4 -->|未命中缓存| S5["5. TPM 预估 & QPS 速率限制检查"]:::check
+
+    S5 -->|超限| E4["❌ 429 Rate Limit Exceeded"]:::reject
+    S5 -->|放行| S6["6. 智能负载均衡 (LB) 与模型推理"]:::check
+
+    S6 --> S7["7. SSE 流式回传 & 真实 Token 审计落盘"]:::check
+```
+
+---
+
+## 三、 核心功能特性
 
 1. **统一 OpenAI 规范 API**：
    - 暴露标准 `POST /v1/chat/completions` 与 `GET /v1/models`，支持任意 SDK、LangChain、Dify 或 cURL 直连。

@@ -1,6 +1,7 @@
 package com.chatling.admin;
 
 import com.chatling.admin.controller.AdminApiController;
+import com.chatling.admin.service.AdminService;
 import com.chatling.common.model.ApiKey;
 import com.chatling.common.model.CommonResult;
 import com.chatling.common.model.ModelConfig;
@@ -31,7 +32,8 @@ public class AdminApiControllerTest {
                 .build();
         JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
         chatlingDao = new ChatlingDao(jdbcTemplate);
-        adminApiController = new AdminApiController(chatlingDao, org.mockito.Mockito.mock(ModelEngineService.class));
+        AdminService adminService = new AdminService(chatlingDao);
+        adminApiController = new AdminApiController(adminService, org.mockito.Mockito.mock(ModelEngineService.class));
     }
 
     @Test

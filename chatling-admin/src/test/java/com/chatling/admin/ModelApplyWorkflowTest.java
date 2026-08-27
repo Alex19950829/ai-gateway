@@ -1,6 +1,7 @@
 package com.chatling.admin;
 
 import com.chatling.admin.controller.AdminApiController;
+import com.chatling.admin.service.AdminService;
 import com.chatling.common.model.ApiKey;
 import com.chatling.common.model.CommonResult;
 import com.chatling.common.model.ModelApply;
@@ -35,7 +36,8 @@ public class ModelApplyWorkflowTest {
                 .build();
         JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
         chatlingDao = new ChatlingDao(jdbcTemplate);
-        adminApiController = new AdminApiController(chatlingDao, null);
+        AdminService adminService = new AdminService(chatlingDao);
+        adminApiController = new AdminApiController(adminService, null);
     }
 
     @Test

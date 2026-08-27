@@ -5,28 +5,30 @@ import com.chatling.common.model.ModelConfig;
 import com.chatling.engine.adapter.MockModelAdapter;
 import com.chatling.engine.adapter.ModelAdapter;
 import com.chatling.engine.template.PromptTemplateEngine;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import javax.annotation.Resource;
 import java.util.List;
 
 @Slf4j
 @Service
+@NoArgsConstructor
+@AllArgsConstructor
 public class ModelEngineService {
 
-    private final List<ModelAdapter> adapters;
-    private final MockModelAdapter mockAdapter;
-    private final PromptTemplateEngine promptTemplateEngine;
-
-    public ModelEngineService(List<ModelAdapter> adapters,
-                              MockModelAdapter mockAdapter,
-                              PromptTemplateEngine promptTemplateEngine) {
-        this.adapters = adapters;
-        this.mockAdapter = mockAdapter;
-        this.promptTemplateEngine = promptTemplateEngine;
-    }
+    @Resource
+    private List<ModelAdapter> adapters;
+    
+    @Resource
+    private MockModelAdapter mockAdapter;
+    
+    @Resource
+    private PromptTemplateEngine promptTemplateEngine;
 
     /**
      * 发起统一大模型流式调用

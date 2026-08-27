@@ -8,23 +8,30 @@
 ## 二、 网关完整处理流水线 (Gateway Full Pipeline)
 
 ```mermaid
+%%{init: {'flowchart': {'curve': 'ortho'}}}%%
 flowchart TD
-    Client["客户端发起请求 (POST /v1/chat/completions)"] --> Pre1["1. API Key 鉴权与身份识别 (sk-chatling-xxx)"]
-    Pre1 --> Pre2["2. 敏感词与合规安全检测 (Content Guardrail)"]
-    
-    Pre2 -->|违规敏感词| Block["❌ 立即 400 阻断并记录违规日志"]
-    Pre2 -->|合规放行| Pre3["3. Prompt 精准哈希缓存检索 (Exact Cache)"]
-    
-    Pre3 -->|✅ 命中缓存| QuickStream["⚡ 0 Token 毫秒级流式打字回放 (TTFT < 20ms)"]
-    QuickStream --> AuditDone["记录 0 Token 审计流水 -> 返回客户端"]
-    
-    Pre3 -->|未命中缓存| Pre4["4. TPM (Tokens/分) & QPS 令牌桶限流检查"]
-    Pre4 -->|超额拦截| TooManyReq["❌ 429 Rate Limit Exceeded"]
-    
-    Pre4 -->|放行| Route["5. 智能负载均衡 (LB) 与熔断健康检查 (Circuit Breaker)"]
-    Route --> Engine["6. 调度 chatling-core-engine 发起真实大模型推理"]
-    Engine --> SSE["7. SSE 响应式流式打字透传客户端"]
-    SSE --> Audit["8. 流结束记录 TTFT 首字延迟、真实Token消耗并落库"]
+    classDef default fill:#1e293b,stroke:#475569,stroke-width:1.5px,color:#f8fafc;
+    classDef entry fill:#0f172a,stroke:#3b82f6,stroke-width:2px,color:#93c5fd;
+    classDef check fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#ffffff;
+    classDef reject fill:#450a0a,stroke:#ef4444,stroke-width:1.5px,color:#fca5a5;
+    classDef hit fill:#064e3b,stroke:#10b981,stroke-width:1.5px,color:#6ee7b7;
+
+    Req["POST /v1/chat/completions"]:::entry --> S1["1. API Key 认证与鉴权"]:::check
+    S1 --> S2["2. 总配额检查 (usedQuota >= totalQuota?)"]:::check
+
+    S2 -->|超出配额| E1["❌ 429 Total Quota Exceeded"]:::reject
+    S2 -->|正常| S3["3. 敏感词安全过滤 (Guardrails)"]:::check
+
+    S3 -->|命中违规| E2["❌ 400 阻断"]:::reject
+    S3 -->|放行| S4["4. Prompt 精准缓存检索 (Exact Cache)"]:::check
+
+    S4 -->|✅ 命中缓存| E3["⚡ 0 Token 毫秒级流式回放"]:::hit
+    S4 -->|未命中缓存| S5["5. TPM 预估 & QPS 速率限制检查"]:::check
+
+    S5 -->|超限| E4["❌ 429 Rate Limit Exceeded"]:::reject
+    S5 -->|放行| S6["6. 智能负载均衡 (LB) 与模型推理"]:::check
+
+    S6 --> S7["7. SSE 流式回传 & 真实 Token 审计落盘"]:::check
 ```
 
 ---

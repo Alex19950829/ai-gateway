@@ -1,11 +1,14 @@
 package com.chatling.bootstrap.config;
 
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.Resource;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
@@ -19,13 +22,12 @@ import java.util.Properties;
 @Slf4j
 @Component
 @Order(100)
+@NoArgsConstructor
+@AllArgsConstructor
 public class LocalDatabaseSecretLoader implements CommandLineRunner {
 
-    private final JdbcTemplate jdbcTemplate;
-
-    public LocalDatabaseSecretLoader(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
-    }
+    @Resource
+    private JdbcTemplate jdbcTemplate;
 
     @Override
     public void run(String... args) {

@@ -3,14 +3,15 @@ package com.chatling.gateway.controller;
 import com.alibaba.fastjson2.JSON;
 import com.chatling.common.dto.OpenAiDto;
 import com.chatling.common.model.ApiKey;
-import com.chatling.common.model.ChatAudit;
 import com.chatling.common.model.ModelConfig;
 import com.chatling.engine.service.ModelEngineService;
 import com.chatling.gateway.cache.PromptCacheService;
 import com.chatling.gateway.filter.ContentGuardrailFilter;
 import com.chatling.gateway.lb.ModelLoadBalancer;
-import com.chatling.gateway.repository.ChatlingDao;
+import com.chatling.gateway.service.GatewayService;
 import com.chatling.gateway.service.TokenRateLimiterService;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import javax.annotation.Resource;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -27,32 +29,31 @@ import java.util.concurrent.atomic.AtomicLong;
 
 @Slf4j
 @RestController
+@NoArgsConstructor
+@AllArgsConstructor
 @RequestMapping("/v1")
 public class GatewayChatController {
 
-    private final ChatlingDao chatlingDao;
-    private final ModelEngineService modelEngineService;
-    private final TokenRateLimiterService rateLimiterService;
-    private final ContentGuardrailFilter contentGuardrailFilter;
-    private final PromptCacheService promptCacheService;
-    private final ModelLoadBalancer modelLoadBalancer;
-    private final org.springframework.core.env.Environment environment;
-
-    public GatewayChatController(ChatlingDao chatlingDao,
-                                 ModelEngineService modelEngineService,
-                                 TokenRateLimiterService rateLimiterService,
-                                 ContentGuardrailFilter contentGuardrailFilter,
-                                 PromptCacheService promptCacheService,
-                                 ModelLoadBalancer modelLoadBalancer,
-                                 org.springframework.core.env.Environment environment) {
-        this.chatlingDao = chatlingDao;
-        this.modelEngineService = modelEngineService;
-        this.rateLimiterService = rateLimiterService;
-        this.contentGuardrailFilter = contentGuardrailFilter;
-        this.promptCacheService = promptCacheService;
-        this.modelLoadBalancer = modelLoadBalancer;
-        this.environment = environment;
-    }
+    @Resource
+    private GatewayService gatewayService;
+    
+    @Resource
+    private ModelEngineService modelEngineService;
+    
+    @Resource
+    private TokenRateLimiterService rateLimiterService;
+    
+    @Resource
+    private ContentGuardrailFilter contentGuardrailFilter;
+    
+    @Resource
+    private PromptCacheService promptCacheService;
+    
+    @Resource
+    private ModelLoadBalancer modelLoadBalancer;
+    
+    @Resource
+    private org.springframework.core.env.Environment environment;
 
     /**
      * 标准 OpenAI 聊天补全接口 (完整网关流水线: 鉴权 -> 敏感词过滤 -> 缓存加速 -> 限流 -> 负载均衡 -> 计量落盘)
@@ -69,27 +70,21 @@ public class GatewayChatController {
         // 1. 鉴权校验 (提取 Bearer sk-chatling-xxx)
         String apiKeyStr = extractApiKey(authHeader);
         if (apiKeyStr == null) {
-            return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(buildErrorMap("Invalid or missing API key in Authorization header")));
+            return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(buildErrorMap("InvalidORmiss API key")));
         }
-
-        log.info("==> [Gateway Ingress] Incoming request: requestId={}, apiKey={}, model={}, isStream={}",
-                requestId, apiKeyStr, targetModelName, request.getStream());
-
+        log.info("requestId={}, apiKey={}, model={}, isStream={}", requestId, apiKeyStr, targetModelName, request.getStream());
         // 1. 凭证合法性校验
-        Optional<ApiKey> keyOpt = chatlingDao.findByApiKey(apiKeyStr);
+        Optional<ApiKey> keyOpt = gatewayService.findByApiKey(apiKeyStr);
         if (keyOpt.isEmpty() || keyOpt.get().getStatus() != 1) {
             log.warn("[-] [Auth Failed] Invalid or disabled API Key: {}", apiKeyStr);
-            return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(buildErrorMap("Invalid or disabled API Key: " + apiKeyStr)));
+            return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(buildErrorMap("Invalid API Key: " + apiKeyStr)));
         }
         ApiKey apiKey = keyOpt.get();
 
         // 2. 细粒度模型白名单权限校验
         if (!isModelAllowed(apiKey.getAllowedModels(), targetModelName)) {
             log.warn("[-] [RBAC Forbidden] API Key {} has no permission for model: {}", apiKeyStr, targetModelName);
-            return Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(buildErrorMap("API Key has no permission to access model: " + targetModelName)));
+            return Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN).body(buildErrorMap("API Key no permission: " + targetModelName)));
         }
 
         if (apiKey.getTotalQuota() > 0 && apiKey.getUsedQuota() >= apiKey.getTotalQuota()) {
@@ -101,12 +96,8 @@ public class GatewayChatController {
         String sensitiveWord = checkRequestSensitive(request);
         if (sensitiveWord != null) {
             log.warn("Prompt rejected due to sensitive keyword: [{}] for key: {}", sensitiveWord, apiKeyStr);
-            chatlingDao.insertAudit(ChatAudit.builder()
-                    .requestId(requestId).apiKey(apiKeyStr).ownerName(apiKey.getOwnerName())
-                    .modelName(targetModelName).ttftMs(2).totalCostMs(2).promptTokens(0).completionTokens(0)
-                    .httpStatus(400).errorMsg("Sensitive content blocked: " + sensitiveWord).build());
-            return Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(buildErrorMap("请求内容包含合规违规敏感词 [" + sensitiveWord + "]，已被网关安全拦截")));
+            gatewayService.recordSensitiveBlockedAudit(requestId, apiKeyStr, apiKey.getOwnerName(), targetModelName, sensitiveWord);
+            return Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST).body(buildErrorMap("包含合规违规敏感词 [" + sensitiveWord + "]，已被拦截")));
         }
 
         // 4. Prompt 精准哈希缓存检索 (Exact Cache)
@@ -119,10 +110,7 @@ public class GatewayChatController {
             long ttft = 15;
             long totalCost = 30;
 
-            chatlingDao.insertAudit(ChatAudit.builder()
-                    .requestId(requestId).apiKey(apiKeyStr).ownerName(apiKey.getOwnerName())
-                    .modelName(targetModelName).ttftMs((int) ttft).totalCostMs((int) totalCost)
-                    .promptTokens(0).completionTokens(0).httpStatus(200).errorMsg("Cache Hit").build());
+            gatewayService.recordCacheHitAudit(requestId, apiKeyStr, apiKey.getOwnerName(), targetModelName, ttft, totalCost);
 
             if (isStream) {
                 Flux<String> cachedFlux = promptCacheService.createCachedStream(targetModelName, cachedResp.getFullText())
@@ -134,18 +122,7 @@ public class GatewayChatController {
                         .header("X-Cache-Status", "HIT")
                         .body(cachedFlux));
             } else {
-                OpenAiDto.ChatCompletionResponse syncResp = OpenAiDto.ChatCompletionResponse.builder()
-                        .id("chatcmpl-cache-" + UUID.randomUUID().toString().substring(0, 8))
-                        .object("chat.completion")
-                        .created(System.currentTimeMillis() / 1000)
-                        .model(targetModelName)
-                        .choices(Collections.singletonList(
-                                OpenAiDto.Choice.builder().index(0)
-                                        .message(OpenAiDto.ChatMessage.builder().role("assistant").content(cachedResp.getFullText()).build())
-                                        .finishReason("stop").build()
-                        ))
-                        .usage(OpenAiDto.Usage.builder().promptTokens(0).completionTokens(0).totalTokens(0).build())
-                        .build();
+                OpenAiDto.ChatCompletionResponse syncResp = buildCachedSyncResponse(targetModelName, cachedResp.getFullText());
                 return Mono.just(ResponseEntity.ok().header("X-Request-Id", requestId).header("X-Cache-Status", "HIT").body(syncResp));
             }
         }
@@ -159,37 +136,7 @@ public class GatewayChatController {
         }
 
         // 6. 查找模型配置与负载均衡路由 (LB)
-        ModelConfig modelConfig = chatlingDao.findModelConfig(targetModelName).orElse(
-                ModelConfig.builder()
-                        .modelName(targetModelName)
-                        .displayName(targetModelName)
-                        .providerType("mock")
-                        .baseUrl("")
-                        .build()
-        );
-
-        String routedUrl = modelLoadBalancer.selectTargetUrl(targetModelName, modelConfig.getBaseUrl());
-        
-        // 智能密钥解析：优先使用 DB，如果是占位符则从 local yml 配置中提取真实 Key
-        String effectiveSecret = modelConfig.getApiSecret();
-        if (effectiveSecret == null || effectiveSecret.contains("your_") || effectiveSecret.trim().isEmpty()) {
-            String configSecret = environment.getProperty("chatling.gateway.secrets." + targetModelName);
-            if (configSecret != null && !configSecret.trim().isEmpty()) {
-                effectiveSecret = configSecret.trim();
-            }
-        }
-
-        ModelConfig activeConfig = ModelConfig.builder()
-                .id(modelConfig.getId())
-                .modelName(modelConfig.getModelName())
-                .displayName(modelConfig.getDisplayName())
-                .providerType(modelConfig.getProviderType())
-                .baseUrl(routedUrl)
-                .apiSecret(effectiveSecret)
-                .fallbackModel(modelConfig.getFallbackModel())
-                .timeoutMs(modelConfig.getTimeoutMs())
-                .status(modelConfig.getStatus())
-                .build();
+        ModelConfig activeConfig = resolveActiveModelConfig(targetModelName);
 
         log.info("==> [Engine Dispatch] Route model: [{}] -> Provider: [{}], BaseURL: [{}], SecretLen: [{}], isStream: [{}]",
                 targetModelName, activeConfig.getProviderType(), activeConfig.getBaseUrl(),
@@ -219,12 +166,12 @@ public class GatewayChatController {
                     })
                     .concatWith(Flux.just("[DONE]"))
                     .doOnComplete(() -> {
-                        modelLoadBalancer.recordSuccess(targetModelName, routedUrl);
+                        modelLoadBalancer.recordSuccess(targetModelName, activeConfig.getBaseUrl());
                         log.info("==> [Stream Success] Finished streaming model: [{}], totalChars: [{}]",
                                 targetModelName, fullGeneratedText.length());
                     })
                     .doOnError(e -> {
-                        modelLoadBalancer.recordFailure(targetModelName, routedUrl);
+                        modelLoadBalancer.recordFailure(targetModelName, activeConfig.getBaseUrl());
                         log.error("==> [Stream Error] Streaming failed on model: [{}], error: {}",
                                 targetModelName, e.getMessage(), e);
                     })
@@ -233,27 +180,14 @@ public class GatewayChatController {
                             long totalCost = System.currentTimeMillis() - startTime;
                             long ttft = (firstTokenTime.get() > 0) ? (firstTokenTime.get() - startTime) : totalCost;
                             int compToks = completionTokens.get();
-                            int totalToks = estimatedPromptTokens + compToks;
 
                             // 写入 Prompt 缓存
                             if (fullGeneratedText.length() > 0) {
                                 promptCacheService.put(promptHash, fullGeneratedText.toString(), estimatedPromptTokens, compToks);
                             }
 
-                            // 扣减与记录流水
-                            chatlingDao.incrUsedQuota(apiKeyStr, totalToks);
-                            chatlingDao.recordDailyUsage(apiKey.getOwnerName(), apiKey.getDepartment(), apiKeyStr, targetModelName, estimatedPromptTokens, compToks);
-                            chatlingDao.insertAudit(ChatAudit.builder()
-                                    .requestId(requestId)
-                                    .apiKey(apiKeyStr)
-                                    .ownerName(apiKey.getOwnerName())
-                                    .modelName(targetModelName)
-                                    .ttftMs((int) ttft)
-                                    .totalCostMs((int) totalCost)
-                                    .promptTokens(estimatedPromptTokens)
-                                    .completionTokens(compToks)
-                                    .httpStatus(200)
-                                    .build());
+                            // 异步解耦落盘
+                            gatewayService.recordChatSuccessAsync(requestId, apiKey, targetModelName, ttft, totalCost, estimatedPromptTokens, compToks);
                         }
                     });
 
@@ -265,24 +199,11 @@ public class GatewayChatController {
         } else {
             return modelEngineService.syncChat(activeConfig, request)
                     .map(response -> {
-                        modelLoadBalancer.recordSuccess(targetModelName, routedUrl);
+                        modelLoadBalancer.recordSuccess(targetModelName, activeConfig.getBaseUrl());
                         long totalCost = System.currentTimeMillis() - startTime;
                         int compToks = (response.getUsage() != null) ? response.getUsage().getCompletionTokens() : 20;
-                        int totalToks = estimatedPromptTokens + compToks;
 
-                        chatlingDao.incrUsedQuota(apiKeyStr, totalToks);
-                        chatlingDao.recordDailyUsage(apiKey.getOwnerName(), apiKey.getDepartment(), apiKeyStr, targetModelName, estimatedPromptTokens, compToks);
-                        chatlingDao.insertAudit(ChatAudit.builder()
-                                .requestId(requestId)
-                                .apiKey(apiKeyStr)
-                                .ownerName(apiKey.getOwnerName())
-                                .modelName(targetModelName)
-                                .ttftMs((int) totalCost)
-                                .totalCostMs((int) totalCost)
-                                .promptTokens(estimatedPromptTokens)
-                                .completionTokens(compToks)
-                                .httpStatus(200)
-                                .build());
+                        gatewayService.recordChatSuccessAsync(requestId, apiKey, targetModelName, totalCost, totalCost, estimatedPromptTokens, compToks);
 
                         return ResponseEntity.ok()
                                 .header("X-Request-Id", requestId)
@@ -297,7 +218,7 @@ public class GatewayChatController {
      */
     @GetMapping("/models")
     public Mono<ResponseEntity<?>> listModels() {
-        List<ModelConfig> list = chatlingDao.listModelConfigs();
+        List<ModelConfig> list = gatewayService.listAvailableModels();
         List<Map<String, Object>> data = new ArrayList<>();
         for (ModelConfig m : list) {
             Map<String, Object> item = new HashMap<>();
@@ -315,11 +236,15 @@ public class GatewayChatController {
     }
 
     private String checkRequestSensitive(OpenAiDto.ChatCompletionRequest req) {
-        if (req.getMessages() == null) return null;
+        if (req.getMessages() == null) {
+            return null;
+        }
         for (OpenAiDto.ChatMessage msg : req.getMessages()) {
             if (msg.getContent() != null) {
                 String hit = contentGuardrailFilter.checkSensitiveWord(msg.getContent());
-                if (hit != null) return hit;
+                if (hit != null) {
+                    return hit;
+                }
             }
         }
         return null;
@@ -371,5 +296,45 @@ public class GatewayChatController {
         Map<String, Object> res = new HashMap<>();
         res.put("error", error);
         return res;
+    }
+
+    private OpenAiDto.ChatCompletionResponse buildCachedSyncResponse(String modelName, String content) {
+        return OpenAiDto.ChatCompletionResponse.builder()
+                .id("chatcmpl-cache-" + UUID.randomUUID().toString().substring(0, 8))
+                .object("chat.completion")
+                .created(System.currentTimeMillis() / 1000)
+                .model(modelName)
+                .choices(Collections.singletonList(
+                        OpenAiDto.Choice.builder().index(0)
+                                .message(OpenAiDto.ChatMessage.builder().role("assistant").content(content).build())
+                                .finishReason("stop").build()
+                ))
+                .usage(OpenAiDto.Usage.builder().promptTokens(0).completionTokens(0).totalTokens(0).build())
+                .build();
+    }
+
+    private ModelConfig resolveActiveModelConfig(String targetModelName) {
+        ModelConfig modelConfig = gatewayService.getEffectiveModelConfig(targetModelName);
+        String routedUrl = modelLoadBalancer.selectTargetUrl(targetModelName, modelConfig.getBaseUrl());
+
+        String effectiveSecret = modelConfig.getApiSecret();
+        if (effectiveSecret == null || effectiveSecret.contains("your_") || effectiveSecret.trim().isEmpty()) {
+            String configSecret = environment.getProperty("chatling.gateway.secrets." + targetModelName);
+            if (configSecret != null && !configSecret.trim().isEmpty()) {
+                effectiveSecret = configSecret.trim();
+            }
+        }
+
+        return ModelConfig.builder()
+                .id(modelConfig.getId())
+                .modelName(modelConfig.getModelName())
+                .displayName(modelConfig.getDisplayName())
+                .providerType(modelConfig.getProviderType())
+                .baseUrl(routedUrl)
+                .apiSecret(effectiveSecret)
+                .fallbackModel(modelConfig.getFallbackModel())
+                .timeoutMs(modelConfig.getTimeoutMs())
+                .status(modelConfig.getStatus())
+                .build();
     }
 }

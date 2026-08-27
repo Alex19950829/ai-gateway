@@ -4,6 +4,8 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
 import com.chatling.common.dto.OpenAiDto;
 import com.chatling.common.model.ModelConfig;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -14,18 +16,18 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import javax.annotation.Resource;
 import java.time.Duration;
 import java.util.Collections;
 
 @Slf4j
 @Component
+@NoArgsConstructor
+@AllArgsConstructor
 public class OpenAiCompatibleAdapter implements ModelAdapter {
 
-    private final WebClient.Builder webClientBuilder;
-
-    public OpenAiCompatibleAdapter(WebClient.Builder webClientBuilder) {
-        this.webClientBuilder = webClientBuilder;
-    }
+    @Resource
+    private WebClient.Builder webClientBuilder;
 
     @Override
     public boolean supports(String providerType) {
