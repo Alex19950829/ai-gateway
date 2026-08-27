@@ -1,0 +1,22 @@
+server:
+  port: 8088
+
+spring:
+  application:
+    name: chatling-gateway
+  datasource:
+    url: jdbc:h2:file:./data/chatling_db;MODE=MySQL;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+
+chatling:
+  gateway:
+    mock-enabled-if-no-key: true
+    default-tpm: 60000
+    default-qps: 20
+

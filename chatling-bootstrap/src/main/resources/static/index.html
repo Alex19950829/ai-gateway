@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>58灵犀大模型服务平台 - ChatLing</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=PingFang+SC:wght@400;500;600;700&display=swap');
+    body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background-color: #f0f2f5; }
+    .sidebar-active { background-color: #e6f4ff !important; color: #1677ff !important; font-weight: 600; border-right: 3px solid #1677ff; }
+    .card-shadow { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02); }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #d9d9d9; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col antialiased">
+
+  <!-- 顶部 58 灵犀标准导航栏 -->
+  <header class="bg-white border-b border-slate-200 px-6 h-14 flex items-center justify-between z-30 sticky top-0 shadow-sm">
+    <div class="flex items-center space-x-8">
+      <!-- 58 灵犀 Logo -->
+      <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('models')">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-md">
+          <i class="fa-solid fa-brain text-white text-base"></i>
+        </div>
+        <div class="flex items-baseline space-x-2">
+          <span class="font-bold text-lg tracking-tight text-slate-900">58 灵犀</span>
+          <span class="text-xs text-slate-400 font-medium">大模型平台 / ChatLing</span>
+        </div>
+      </div>
+
+      <!-- 顶部一级菜单 -->
+      <nav class="hidden md:flex items-center space-x-1 text-sm font-medium">
+        <a href="javascript:void(0)" onclick="switchTab('models')" class="px-3 py-1.5 rounded-md text-blue-600 bg-blue-50 font-semibold">模型与开放管理</a>
+        <a href="javascript:void(0)" onclick="switchTab('experience')" class="px-3 py-1.5 rounded-md text-slate-600 hover:text-blue-600 hover:bg-slate-50">模型体验广场</a>
+        <a href="javascript:void(0)" onclick="switchTab('promptlab')" class="px-3 py-1.5 rounded-md text-slate-600 hover:text-blue-600 hover:bg-slate-50">Prompt 实验室</a>
+        <a href="javascript:void(0)" onclick="switchTab('dashboard')" class="px-3 py-1.5 rounded-md text-slate-600 hover:text-blue-600 hover:bg-slate-50">用量与监控看板</a>
+      </nav>
+    </div>
+
+    <!-- 右侧用户与运行状态 -->
+    <div class="flex items-center space-x-4 text-xs">
+      <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="font-medium">Gateway 正常运行 (:8088)</span>
+      </div>
+      <div class="flex items-center space-x-2 border-l pl-4 border-slate-200">
+        <div class="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">
+          A
+        </div>
+        <span class="text-slate-700 font-medium">admin</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主体区域：左侧 58 风格竖向侧边栏 + 右侧白色内容卡片 -->
+  <div class="flex-1 flex overflow-hidden">
+
+    <!-- 侧边导航栏 (58 AntDesign 风格) -->
+    <aside class="w-56 bg-white border-r border-slate-200 flex flex-col py-4 flex-shrink-0">
+      <div class="px-4 mb-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">模型与开放能力</div>
+      <nav class="space-y-1">
+        <button onclick="switchTab('models')" id="menu-models" class="sidebar-item sidebar-active w-full flex items-center gap-3 px-5 py-2.5 text-xs text-left text-slate-700 hover:bg-slate-50 transition-colors">
+          <i class="fa-solid fa-cubes text-sm"></i>
+          <span>模型池接入 (Model)</span>
+        </button>
+        <button onclick="switchTab('apikeys')" id="menu-apikeys" class="sidebar-item w-full flex items-center gap-3 px-5 py-2.5 text-xs text-left text-slate-700 hover:bg-slate-50 transition-colors">
+          <i class="fa-solid fa-key text-sm"></i>
+          <span>API Key 凭据管理</span>
+        </button>
+        <button onclick="switchTab('applies')" id="menu-applies" class="sidebar-item w-full flex items-center gap-3 px-5 py-2.5 text-xs text-left text-slate-700 hover:bg-slate-50 transition-colors">
+          <i class="fa-solid fa-clipboard-check text-sm"></i>
+          <span>权限审批中心 (Approval)</span>
+        </button>
+        <button onclick="switchTab('experience')" id="menu-experience" class="sidebar-item w-full flex items-center gap-3 px-5 py-2.5 text-xs text-left text-slate-700 hover:bg-slate-50 transition-colors">
+          <i class="fa-solid fa-comments text-sm"></i>
+          <span>模型体验广场 (/textModel)</span>
+        </button>
+        <button onclick="switchTab('promptlab')" id="menu-promptlab" class="sidebar-item w-full flex items-center gap-3 px-5 py-2.5 text-xs text-left text-slate-700 hover:bg-slate-50 transition-colors">
+          <i class="fa-solid fa-flask text-sm"></i>
+          <span>Prompt 调试实验室</span>
+        </button>
+      </nav>
+
+      <div class="px-4 mt-6 mb-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">数据与审计</div>
+      <nav class="space-y-1">
+        <button onclick="switchTab('dashboard')" id="menu-dashboard" class="sidebar-item w-full flex items-center gap-3 px-5 py-2.5 text-xs text-left text-slate-700 hover:bg-slate-50 transition-colors">
+          <i class="fa-solid fa-chart-line text-sm"></i>
+          <span>网关用量监控大屏</span>
+        </button>
+      </nav>
+    </aside>
+
+    <!-- 右侧主内容区域 -->
+    <main class="flex-1 bg-[#f0f2f5] p-6 overflow-y-auto custom-scrollbar">
+
+      <!-- 1. 模型池管理 (默认 openManagement?navMode=model 页面) -->
+      <section id="view-models" class="tab-view space-y-4">
+        <!-- 页面标题条 -->
+        <div class="bg-white p-5 rounded-lg border border-slate-200 card-shadow flex items-center justify-between">
+          <div>
+            <h2 class="text-base font-bold text-slate-900">大模型上游接入池 (Model Management)</h2>
+            <p class="text-xs text-slate-500 mt-1">纳管自研大模型（ChatLing-Turbo/vLLM）与主流公有云商用 API，支持主备 Fallback 智能容灾降级</p>
+          </div>
+          <button onclick="openAddModelModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-medium shadow-sm transition-colors flex items-center gap-1.5">
+            <i class="fa-solid fa-plus"></i> 新增模型配置
+          </button>
+        </div>
+
+        <!-- 模型列表卡片 -->
+        <div class="bg-white rounded-lg border border-slate-200 card-shadow overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+                <tr>
+                  <th class="py-3 px-4">模型对外标识 (model_name)</th>
+                  <th class="py-3 px-4">模型展示名称</th>
+                  <th class="py-3 px-4">提供商类型</th>
+                  <th class="py-3 px-4">上游 Base URL</th>
+                  <th class="py-3 px-4">容灾降级 (Fallback)</th>
+                  <th class="py-3 px-4 whitespace-nowrap">超时 (ms)</th>
+                  <th class="py-3 px-4 whitespace-nowrap min-w-[70px]">状态</th>
+                  <th class="py-3 px-4 text-right whitespace-nowrap min-w-[60px]">操作</th>
+                </tr>
+              </thead>
+              <tbody id="models-table-body" class="divide-y divide-slate-100 text-slate-700">
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. API Key 管理 -->
+      <section id="view-apikeys" class="tab-view hidden space-y-4">
+        <div class="bg-white p-5 rounded-lg border border-slate-200 card-shadow flex items-center justify-between">
+          <div>
+            <h2 class="text-base font-bold text-slate-900">API Key 开放凭据治理中心</h2>
+            <p class="text-xs text-slate-500 mt-1">生成企业业务线接入凭据，配置按分钟的 Token 限流 (TPM) 与 QPS 配额</p>
+          </div>
+          <button onclick="openCreateKeyModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-medium shadow-sm transition-colors flex items-center gap-1.5">
+            <i class="fa-solid fa-plus"></i> 创建 API Key
+          </button>
+        </div>
+
+        <div class="bg-white rounded-lg border border-slate-200 card-shadow overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+                <tr>
+                  <th class="py-3 px-4">Key 名称 / 描述</th>
+                  <th class="py-3 px-4">API Key (凭据)</th>
+                  <th class="py-3 px-4">申请人 / 部门</th>
+                  <th class="py-3 px-4">允许调用模型</th>
+                  <th class="py-3 px-4 whitespace-nowrap">限流策略 (TPM/QPS)</th>
+                  <th class="py-3 px-4 whitespace-nowrap">配额使用情况</th>
+                  <th class="py-3 px-4 whitespace-nowrap min-w-[70px]">状态</th>
+                  <th class="py-3 px-4 text-right whitespace-nowrap min-w-[70px]">操作</th>
+                </tr>
+              </thead>
+              <tbody id="apikey-table-body" class="divide-y divide-slate-100 text-slate-700">
+                <!-- 动态填充 -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2.5 权限审批中心 (Approval) -->
+      <section id="view-applies" class="tab-view hidden space-y-4">
+        <div class="bg-white p-5 rounded-lg border border-slate-200 card-shadow flex items-center justify-between">
+          <div>
+            <h2 class="text-base font-bold text-slate-900">大模型权限申请与审批中心 (Model Access Approval)</h2>
+            <p class="text-xs text-slate-500 mt-1">集中审核各业务线研发提交的模型调用开通申请，审批通过后将自动追加至对应的 API Key 权限白名单</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="loadApplies()" class="px-3 py-1.5 border border-slate-300 text-slate-700 hover:bg-slate-50 rounded text-xs">
+              <i class="fa-solid fa-arrows-rotate"></i> 刷新列表
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg border border-slate-200 card-shadow overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+                <tr>
+                  <th class="py-3 px-4">申请单 ID</th>
+                  <th class="py-3 px-4">申请人 / 部门</th>
+                  <th class="py-3 px-4">关联 API Key</th>
+                  <th class="py-3 px-4">申请开通模型</th>
+                  <th class="py-3 px-4">业务申请用途/理由</th>
+                  <th class="py-3 px-4 whitespace-nowrap">提交时间</th>
+                  <th class="py-3 px-4 whitespace-nowrap min-w-[70px]">审批状态</th>
+                  <th class="py-3 px-4 text-right whitespace-nowrap min-w-[100px]">操作</th>
+                </tr>
+              </thead>
+              <tbody id="applies-table-body" class="divide-y divide-slate-100 text-slate-700">
+                <!-- 动态填充 -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. 模型体验广场 (/textModel) -->
+      <section id="view-experience" class="tab-view hidden flex flex-col h-[calc(100vh-120px)]">
+        <div class="bg-white rounded-lg border border-slate-200 card-shadow flex flex-col flex-1 overflow-hidden">
+          <!-- 顶部工具条 -->
+          <div class="p-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+            <div class="flex items-center gap-3">
+              <span class="text-xs text-slate-600 font-medium">当前体验模型:</span>
+              <select id="chat-model-select" class="bg-white border border-slate-300 text-xs rounded px-3 py-1.5 text-slate-800 focus:outline-none focus:border-blue-500 font-medium">
+                <option value="glm-4-flash" selected>⚡ 智谱 GLM-4 Flash (官方免费极速在线)</option>
+                <option value="qwen-plus">👑 阿里通义千问 Plus (阿里云官方旗舰)</option>
+                <option value="gemini-2.5-flash">⚡ Google Gemini 2.5 Flash (谷歌官方极速多模态)</option>
+                <option value="moonshot-v1-8k">🌙 Kimi Moonshot AI (月之暗面官方商用)</option>
+                <option value="ep-m-20260414104415-9rcgn">🔥 火山方舟 Coding Plan (DeepSeek/Doubao)</option>
+                <option value="deepseek-chat">🚀 DeepSeek-V3 官方商业大模型 (真实在线)</option>
+              </select>
+            </div>
+            <button onclick="clearChatHistory()" class="px-3 py-1 rounded bg-slate-100 hover:bg-slate-200 text-xs text-slate-600 flex items-center gap-1.5">
+              <i class="fa-solid fa-trash-can"></i> 清空对话
+            </button>
+          </div>
+
+          <!-- 对话消息区 -->
+          <div id="chat-messages" class="flex-1 p-6 overflow-y-auto space-y-4 custom-scrollbar bg-[#fafafa]">
+            <div class="flex items-start gap-3">
+              <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs flex-shrink-0">
+                <i class="fa-solid fa-robot"></i>
+              </div>
+              <div class="bg-white border border-slate-200 rounded-lg p-3.5 max-w-2xl text-xs leading-relaxed text-slate-800 shadow-sm">
+                您好！我是 <strong>58 灵犀大模型服务助手</strong>。您可以在此测试各模型打字机流式 SSE 交互响应！
+              </div>
+            </div>
+          </div>
+
+          <!-- 底部输入栏 -->
+          <div class="p-4 border-t border-slate-200 bg-white">
+            <div class="flex gap-2 mb-2">
+              <button onclick="fillChatInput('请帮我写一篇北京通州区精装两居室的租房房源吸引人文案')" class="text-[11px] bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 px-2.5 py-1 rounded">🏠 租房房源描述</button>
+              <button onclick="fillChatInput('分析一下大模型网关中 TPM 令牌桶限流与传统 QPS 限流的区别')" class="text-[11px] bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 px-2.5 py-1 rounded">⚡ TPM 限流原理解析</button>
+              <button onclick="fillChatInput('用 Python 写一个通过 OpenAI SDK 请求本地 8088 网关的示例')" class="text-[11px] bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 px-2.5 py-1 rounded">💻 Python 接入示例</button>
+            </div>
+            <div class="flex gap-2">
+              <input type="text" id="chat-input" onkeydown="if(event.key==='Enter') sendChatMessage()" placeholder="输入您的问题，按 Enter 键发送流式对话..." class="flex-1 bg-white border border-slate-300 rounded px-4 py-2 text-xs text-slate-800 focus:outline-none focus:border-blue-500" />
+              <button onclick="sendChatMessage()" id="chat-send-btn" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold flex items-center gap-1.5">
+                <span>发送</span> <i class="fa-solid fa-paper-plane text-xs"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. Prompt 实验室 (/experience) -->
+      <section id="view-promptlab" class="tab-view hidden space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- 左侧参数调节面板 -->
+          <div class="bg-white p-5 rounded-lg border border-slate-200 card-shadow space-y-4">
+            <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
+              <i class="fa-solid fa-sliders text-blue-600"></i> 模型与超参数调节
+            </h3>
+
+            <div>
+              <label class="text-xs text-slate-600 font-medium block mb-1">测试模型</label>
+              <select id="prompt-model-select" class="w-full bg-white border border-slate-300 text-xs rounded px-3 py-2 text-slate-800 font-medium">
+                <option value="glm-4-flash" selected>glm-4-flash (智谱 GLM-4 Flash 免费极速)</option>
+                <option value="qwen-plus">qwen-plus (阿里通义千问 Plus)</option>
+                <option value="gemini-2.5-flash">gemini-2.5-flash (Google 谷歌极速多模态)</option>
+                <option value="moonshot-v1-8k">moonshot-v1-8k (Kimi 月之暗面)</option>
+                <option value="ep-m-20260414104415-9rcgn">ep-m-20260414104415-9rcgn (火山方舟 Coding Plan)</option>
+                <option value="deepseek-chat">deepseek-chat (DeepSeek 官方商业 API)</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="text-xs text-slate-600 font-medium block mb-1">System Prompt (系统人设设定)</label>
+              <textarea id="prompt-system" rows="4" class="w-full bg-white border border-slate-300 text-xs rounded p-2.5 text-slate-800 focus:outline-none focus:border-blue-500" placeholder="例如：你是一位资深的房产经纪人与文案大师..."></textarea>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-600">Temperature (发散度)</span>
+                <span class="text-blue-600 font-semibold" id="val-temperature">0.7</span>
+              </div>
+              <input type="range" id="param-temperature" min="0" max="1" step="0.1" value="0.7" oninput="document.getElementById('val-temperature').innerText=this.value" class="w-full accent-blue-600">
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-600">Top-P (采样核)</span>
+                <span class="text-blue-600 font-semibold" id="val-topp">0.9</span>
+              </div>
+              <input type="range" id="param-topp" min="0" max="1" step="0.05" value="0.9" oninput="document.getElementById('val-topp').innerText=this.value" class="w-full accent-blue-600">
+            </div>
+
+            <div>
+              <label class="text-xs text-slate-600 font-medium block mb-1">Max Tokens (最大生成)</label>
+              <input type="number" id="param-maxtokens" value="1024" class="w-full bg-white border border-slate-300 text-xs rounded px-3 py-1.5 text-slate-800">
+            </div>
+          </div>
+
+          <!-- 右侧调试运行区 -->
+          <div class="md:col-span-2 bg-white p-5 rounded-lg border border-slate-200 card-shadow flex flex-col space-y-4">
+            <div>
+              <label class="text-xs text-slate-600 font-medium block mb-1">User Prompt (测试提问)</label>
+              <div class="flex gap-2">
+                <textarea id="prompt-user" rows="3" class="flex-1 bg-white border border-slate-300 text-xs rounded p-2.5 text-slate-800 focus:outline-none focus:border-blue-500" placeholder="输入你想测试的用户提问..."></textarea>
+                <button onclick="runPromptLabTest()" id="prompt-run-btn" class="px-6 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold flex flex-col items-center justify-center gap-1 shadow-sm">
+                  <i class="fa-solid fa-play text-xs"></i>
+                  <span>运行测试</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="flex-1 flex flex-col">
+              <div class="flex items-center justify-between text-xs text-slate-500 mb-1">
+                <span>流式响应输出 (Stream Output)</span>
+                <span id="prompt-meta-stats" class="text-emerald-600 font-mono font-medium"></span>
+              </div>
+              <div id="prompt-output-box" class="flex-1 bg-slate-50 border border-slate-200 rounded p-4 text-xs font-mono text-slate-800 whitespace-pre-wrap overflow-y-auto custom-scrollbar min-h-[260px]">
+                等待运行调试...
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5. 监控看板与流水 -->
+      <section id="view-dashboard" class="tab-view hidden space-y-4">
+        <!-- 指标卡片 -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div class="bg-white p-4 rounded-lg border border-slate-200 card-shadow">
+            <div class="text-xs text-slate-500">总消耗 Tokens</div>
+            <div class="text-2xl font-bold mt-1.5 text-blue-600" id="stat-total-tokens">0</div>
+            <div class="text-[11px] text-slate-400 mt-1">Prompt + Completion</div>
+          </div>
+          <div class="bg-white p-4 rounded-lg border border-slate-200 card-shadow">
+            <div class="text-xs text-slate-500">累计调用请求数</div>
+            <div class="text-2xl font-bold mt-1.5 text-indigo-600" id="stat-total-reqs">0</div>
+            <div class="text-[11px] text-slate-400 mt-1">全模型累计请求</div>
+          </div>
+          <div class="bg-white p-4 rounded-lg border border-slate-200 card-shadow">
+            <div class="text-xs text-slate-500">平均首字延迟 (TTFT)</div>
+            <div class="text-2xl font-bold mt-1.5 text-emerald-600" id="stat-avg-ttft">0 ms</div>
+            <div class="text-[11px] text-slate-400 mt-1">Time to First Token</div>
+          </div>
+          <div class="bg-white p-4 rounded-lg border border-slate-200 card-shadow">
+            <div class="text-xs text-slate-500">有效 API Key 数量</div>
+            <div class="text-2xl font-bold mt-1.5 text-purple-600" id="stat-active-keys">0</div>
+            <div class="text-[11px] text-slate-400 mt-1">在线凭据总数</div>
+          </div>
+        </div>
+
+        <!-- 审计流水表格 -->
+        <div class="bg-white rounded-lg border border-slate-200 card-shadow p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <i class="fa-solid fa-list-check text-blue-600"></i> 网关最近调用审计流水
+            </h2>
+            <button onclick="loadDashboardStats()" class="text-xs text-blue-600 hover:underline flex items-center gap-1">
+              <i class="fa-solid fa-rotate"></i> 刷新
+            </button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+                <tr>
+                  <th class="py-2.5 px-3">请求 ID</th>
+                  <th class="py-2.5 px-3">API Key</th>
+                  <th class="py-2.5 px-3">调用人</th>
+                  <th class="py-2.5 px-3">目标模型</th>
+                  <th class="py-2.5 px-3">TTFT (首字)</th>
+                  <th class="py-2.5 px-3">总耗时</th>
+                  <th class="py-2.5 px-3">Tokens (入/出)</th>
+                  <th class="py-2.5 px-3">状态</th>
+                  <th class="py-2.5 px-3">调用时间</th>
+                </tr>
+              </thead>
+              <tbody id="audit-table-body" class="divide-y divide-slate-100 text-slate-700">
+                <!-- 动态填充 -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- 模态框：创建 API Key -->
+  <div id="modal-create-key" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center hidden">
+    <div class="bg-white max-w-md w-full p-6 rounded-lg shadow-xl border border-slate-200 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-key text-blue-600"></i> 创建 API Key 凭证
+        </h3>
+        <button onclick="closeModal('modal-create-key')" class="text-slate-400 hover:text-slate-600">&times;</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="text-slate-600 block mb-1">凭证描述名称 *</label>
+          <input type="text" id="new-key-name" placeholder="如：招聘智能客服Key" class="w-full border border-slate-300 rounded p-2 text-slate-800 focus:outline-none focus:border-blue-500">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-slate-600 block mb-1">申请人工号/姓名 *</label>
+            <input type="text" id="new-key-owner" placeholder="如：zhangsan" class="w-full border border-slate-300 rounded p-2 text-slate-800">
+          </div>
+          <div>
+            <label class="text-slate-600 block mb-1">所属部门 *</label>
+            <input type="text" id="new-key-dept" placeholder="如：房产事业部" class="w-full border border-slate-300 rounded p-2 text-slate-800">
+          </div>
+        </div>
+        <div>
+          <label class="text-slate-600 block mb-1">允许调用模型 (* 为全量)</label>
+          <input type="text" id="new-key-models" value="*" class="w-full border border-slate-300 rounded p-2 text-slate-800">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-slate-600 block mb-1">TPM 限流 (Tokens/分)</label>
+            <input type="number" id="new-key-tpm" value="60000" class="w-full border border-slate-300 rounded p-2 text-slate-800">
+          </div>
+          <div>
+            <label class="text-slate-600 block mb-1">QPS 限流 (请求/秒)</label>
+            <input type="number" id="new-key-qps" value="20" class="w-full border border-slate-300 rounded p-2 text-slate-800">
+          </div>
+        </div>
+      </div>
+
+  <!-- 模态框：申请模型使用权限 -->
+  <div id="modal-apply-model" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center hidden">
+    <div class="bg-white max-w-md w-full p-6 rounded-lg shadow-xl border border-slate-200 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-lock-open text-blue-600"></i> 申请大模型调用权限
+        </h3>
+        <button onclick="closeModal('modal-apply-model')" class="text-slate-400 hover:text-slate-600">&times;</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="text-slate-600 block mb-1">目标开通模型</label>
+          <input type="text" id="apply-model-name" readonly class="w-full bg-slate-100 border border-slate-300 rounded p-2 text-slate-700 font-mono font-semibold">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-slate-600 block mb-1">申请人工号/姓名 *</label>
+            <input type="text" id="apply-applicant-name" value="zhangsan" class="w-full border border-slate-300 rounded p-2 text-slate-800">
+          </div>
+          <div>
+            <label class="text-slate-600 block mb-1">归属部门 *</label>
+            <input type="text" id="apply-department" value="房产事业部" class="w-full border border-slate-300 rounded p-2 text-slate-800">
+          </div>
+        </div>
+        <div>
+          <label class="text-slate-600 block mb-1">关联 API Key 凭证 *</label>
+          <input type="text" id="apply-api-key" value="sk-chatling-admin-demo888" class="w-full border border-slate-300 rounded p-2 text-slate-800 font-mono">
+        </div>
+        <div>
+          <label class="text-slate-600 block mb-1">业务申请理由 / 场景描述 *</label>
+          <textarea id="apply-reason" rows="3" placeholder="请详细描述模型使用场景（如：用于房源描述润色、智能客服多轮问答）..." class="w-full border border-slate-300 rounded p-2 text-slate-800 focus:outline-none focus:border-blue-500"></textarea>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+        <button onclick="closeModal('modal-apply-model')" class="px-4 py-1.5 rounded border border-slate-300 text-slate-600 hover:bg-slate-50 text-xs">取消</button>
+        <button onclick="submitApplyModel()" class="px-4 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold">提交审批单</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框：添加 / 编辑模型配置 -->
+  <div id="modal-add-model" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center hidden">
+    <div class="bg-white max-w-lg w-full p-6 rounded-lg shadow-xl border border-slate-200 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-cubes text-blue-600"></i> 新增大模型上游节点 (支持真实密钥)
+        </h3>
+        <button onclick="closeModal('modal-add-model')" class="text-slate-400 hover:text-slate-600">&times;</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-slate-600 block mb-1">模型标识 (model_name) *</label>
+            <input type="text" id="new-model-name" placeholder="如：deepseek-v3" class="w-full border border-slate-300 rounded p-2 text-slate-800 focus:outline-none focus:border-blue-500">
+          </div>
+          <div>
+            <label class="text-slate-600 block mb-1">展示名称 (display_name) *</label>
+            <input type="text" id="new-model-display" placeholder="如：DeepSeek 官方大模型" class="w-full border border-slate-300 rounded p-2 text-slate-800">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-slate-600 block mb-1">提供商类型 (provider_type) *</label>
+            <select id="new-model-provider" class="w-full border border-slate-300 rounded p-2 text-slate-800">
+              <option value="deepseek">DeepSeek (OpenAI 协议)</option>
+              <option value="dashscope">阿里百炼 (DashScope)</option>
+              <option value="vllm">vLLM / SGLang 推理集群</option>
+              <option value="ollama">本地 Ollama 实例</option>
+              <option value="openai">OpenAI 官方</option>
+              <option value="mock">本地模拟 Mock</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-slate-600 block mb-1">Fallback 降级备用模型</label>
+            <input type="text" id="new-model-fallback" placeholder="如：qwen-max" class="w-full border border-slate-300 rounded p-2 text-slate-800">
+          </div>
+        </div>
+
+        <div>
+          <label class="text-slate-600 block mb-1">上游 Base URL *</label>
+          <input type="text" id="new-model-url" placeholder="如：https://api.deepseek.com/v1" class="w-full border border-slate-300 rounded p-2 text-slate-800 font-mono">
+        </div>
+
+        <div>
+          <label class="text-slate-600 block mb-1">真实厂商 API Secret / Key (安全注入)</label>
+          <input type="password" id="new-model-secret" placeholder="如：sk-xxxxxx (由网关转发时安全注入)" class="w-full border border-slate-300 rounded p-2 text-slate-800 font-mono">
+        </div>
+
+        <!-- 连通性测试结果提示 -->
+        <div id="test-conn-result" class="text-xs hidden p-2.5 rounded bg-slate-50 border"></div>
+      </div>
+
+      <div class="flex items-center justify-between pt-3 border-t border-slate-100">
+        <button onclick="testCurrentModelConnection()" class="px-3 py-1.5 rounded border border-blue-500 text-blue-600 hover:bg-blue-50 text-xs flex items-center gap-1">
+          <i class="fa-solid fa-satellite-dish"></i> 测试连接
+        </button>
+        <div class="flex gap-2">
+          <button onclick="closeModal('modal-add-model')" class="px-4 py-1.5 rounded border border-slate-300 text-slate-600 hover:bg-slate-50 text-xs">取消</button>
+          <button onclick="submitAddModelConfig()" class="px-4 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold">保存配置</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const DEFAULT_KEY = "sk-chatling-admin-demo888";
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-view').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('sidebar-active'));
+
+      const targetView = document.getElementById('view-' + tabId);
+      if (targetView) targetView.classList.remove('hidden');
+
+      const activeMenu = document.getElementById('menu-' + tabId);
+      if (activeMenu) activeMenu.classList.add('sidebar-active');
+
+      if (tabId === 'dashboard') loadDashboardStats();
+      if (tabId === 'apikeys') loadApiKeys();
+      if (tabId === 'models') loadModels();
+      if (tabId === 'applies') loadApplies();
+    }
+
+    let currentAllowedModels = [];
+    let currentPendingApplies = [];
+
+    async function loadModels() {
+      try {
+        // 先拉取当前 Key 的权限与待审批列表
+        const [modelsRes, keysRes, appliesRes] = await Promise.all([
+          fetch('/api/admin/models').then(r => r.json()),
+          fetch('/api/admin/apikeys').then(r => r.json()),
+          fetch('/api/admin/applies').then(r => r.json())
+        ]);
+
+        let allowedStr = "*";
+        if (keysRes.code === 0 && keysRes.data.length > 0) {
+          const mainKey = keysRes.data.find(k => k.apiKey === DEFAULT_KEY) || keysRes.data[0];
+          allowedStr = mainKey.allowedModels || "";
+        }
+        currentAllowedModels = allowedStr === "*" ? ["*"] : allowedStr.split(',').map(s => s.trim());
+        
+        currentPendingApplies = (appliesRes.code === 0 && appliesRes.data) 
+          ? appliesRes.data.filter(a => a.status === 0).map(a => a.modelName)
+          : [];
+
+        const tbody = document.getElementById('models-table-body');
+        if (modelsRes.code === 0 && modelsRes.data.length > 0) {
+          tbody.innerHTML = modelsRes.data.map(m => {
+            const isAuthorized = currentAllowedModels.includes("*") || currentAllowedModels.includes(m.modelName);
+            const isPending = currentPendingApplies.includes(m.modelName);
+
+            let statusBadge = '';
+            let actionBtn = '';
+
+            if (isAuthorized) {
+              statusBadge = '<span class="inline-block px-2 py-0.5 rounded text-emerald-700 bg-emerald-50 border border-emerald-200 whitespace-nowrap text-[11px] font-medium"><i class="fa-solid fa-circle-check mr-1"></i>已开通</span>';
+              actionBtn = `<button onclick="switchTab('experience'); document.getElementById('chat-model-select').value='${m.modelName}';" class="px-2.5 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 font-medium text-[11px]"><i class="fa-solid fa-play mr-1"></i>立即体验</button>`;
+            } else if (isPending) {
+              statusBadge = '<span class="inline-block px-2 py-0.5 rounded text-amber-700 bg-amber-50 border border-amber-200 whitespace-nowrap text-[11px] font-medium"><i class="fa-solid fa-clock mr-1"></i>审批中 ⏳</span>';
+              actionBtn = `<span class="text-slate-400 text-xs italic">等待审批</span>`;
+            } else {
+              statusBadge = '<span class="inline-block px-2 py-0.5 rounded text-slate-500 bg-slate-100 border border-slate-200 whitespace-nowrap text-[11px] font-medium"><i class="fa-solid fa-lock mr-1"></i>未开通</span>';
+              actionBtn = `<button onclick="openApplyModal('${m.modelName}')" class="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-[11px] shadow-sm"><i class="fa-solid fa-key mr-1"></i>申请开通</button>`;
+            }
+
+            return `
+              <tr class="hover:bg-slate-50">
+                <td class="py-3 px-4 font-semibold text-blue-600 font-mono">${m.modelName}</td>
+                <td class="py-3 px-4 text-slate-900">${m.displayName}</td>
+                <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">${m.providerType}</span></td>
+                <td class="py-3 px-4 font-mono text-slate-500">${m.baseUrl || '<span class="text-slate-400">本地Mock引擎</span>'}</td>
+                <td class="py-3 px-4 text-amber-600 font-mono">${m.fallbackModel || '-'}</td>
+                <td class="py-3 px-4 whitespace-nowrap">${statusBadge}</td>
+                <td class="py-3 px-4 text-right whitespace-nowrap space-x-2">
+                  ${actionBtn}
+                  <button onclick="deleteModel(${m.id})" class="text-slate-400 hover:text-rose-600 ml-2" title="删除"><i class="fa-solid fa-trash"></i></button>
+                </td>
+              </tr>
+            `;
+          }).join('');
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    async function loadApplies() {
+      try {
+        const res = await fetch('/api/admin/applies').then(r => r.json());
+        const tbody = document.getElementById('applies-table-body');
+        if (res.code === 0 && res.data.length > 0) {
+          tbody.innerHTML = res.data.map(a => {
+            let statusTag = '';
+            let actionHtml = '';
+            if (a.status === 0) {
+              statusTag = '<span class="inline-block px-2 py-0.5 rounded text-amber-700 bg-amber-50 border border-amber-200 font-medium text-[11px]">待管理员审批</span>';
+              actionHtml = `
+                <button onclick="approveApply(${a.id})" class="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-medium text-[11px] shadow-sm"><i class="fa-solid fa-check mr-1"></i>同意通过</button>
+                <button onclick="rejectApply(${a.id})" class="px-2.5 py-1 rounded bg-rose-50 text-rose-600 hover:bg-rose-100 font-medium text-[11px] ml-1">驳回</button>
+              `;
+            } else if (a.status === 1) {
+              statusTag = '<span class="inline-block px-2 py-0.5 rounded text-emerald-700 bg-emerald-50 border border-emerald-200 font-medium text-[11px]">已通过开通</span>';
+              actionHtml = '<span class="text-emerald-600 text-xs"><i class="fa-solid fa-circle-check mr-1"></i>权限已生效</span>';
+            } else {
+              statusTag = '<span class="inline-block px-2 py-0.5 rounded text-rose-700 bg-rose-50 border border-rose-200 font-medium text-[11px]">已驳回</span>';
+              actionHtml = '<span class="text-slate-400 text-xs">已结束</span>';
+            }
+
+            return `
+              <tr class="hover:bg-slate-50">
+                <td class="py-3 px-4 font-mono text-slate-500">#${a.id}</td>
+                <td class="py-3 px-4 font-medium text-slate-900">${a.applicantName} <span class="text-slate-400">(${a.department})</span></td>
+                <td class="py-3 px-4 font-mono text-slate-600 text-xs">${a.apiKey}</td>
+                <td class="py-3 px-4 font-semibold text-blue-600 font-mono">${a.modelName}</td>
+                <td class="py-3 px-4 text-slate-600">${a.applyReason || '-'}</td>
+                <td class="py-3 px-4 text-slate-400 text-xs whitespace-nowrap">${a.createdTime ? new Date(a.createdTime).toLocaleString() : '刚刚'}</td>
+                <td class="py-3 px-4 whitespace-nowrap">${statusTag}</td>
+                <td class="py-3 px-4 text-right whitespace-nowrap">${actionHtml}</td>
+              </tr>
+            `;
+          }).join('');
+        } else {
+          tbody.innerHTML = '<tr><td colspan="8" class="text-center py-6 text-slate-400">暂无待审批申请工单</td></tr>';
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    function openApplyModal(modelName) {
+      document.getElementById('apply-model-name').value = modelName;
+      document.getElementById('apply-reason').value = '';
+      document.getElementById('modal-apply-model').classList.remove('hidden');
+    }
+
+    async function submitApplyModel() {
+      const model = document.getElementById('apply-model-name').value;
+      const applicant = document.getElementById('apply-applicant-name').value.trim();
+      const dept = document.getElementById('apply-department').value.trim();
+      const apiKey = document.getElementById('apply-api-key').value.trim();
+      const reason = document.getElementById('apply-reason').value.trim();
+
+      if (!applicant || !dept || !apiKey || !reason) {
+        alert("请完整填写申请人、部门、API Key 与业务申请理由！");
+        return;
+      }
+
+      await fetch('/api/admin/applies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          applicantName: applicant,
+          department: dept,
+          apiKey: apiKey,
+          modelName: model,
+          applyReason: reason
+        })
+      });
+
+      closeModal('modal-apply-model');
+      alert(`已成功提交【${model}】开通申请！请等待管理员在【权限审批中心】审批。`);
+      loadModels();
+    }
+
+    async function approveApply(id) {
+      await fetch(`/api/admin/applies/${id}/approve`, { method: 'PUT' });
+      alert("审批通过！该模型权限已自动追加至对应 API Key 白名单。");
+      loadApplies();
+      loadModels();
+      loadApiKeys();
+    }
+
+    async function rejectApply(id) {
+      if (!confirm("确定驳回该申请吗？")) return;
+      await fetch(`/api/admin/applies/${id}/reject`, { method: 'PUT' });
+      loadApplies();
+      loadModels();
+    }
+
+    async function loadApiKeys() {
+      try {
+        const res = await fetch('/api/admin/apikeys').then(r => r.json());
+        const tbody = document.getElementById('apikey-table-body');
+        if (res.code === 0 && res.data.length > 0) {
+          tbody.innerHTML = res.data.map(k => `
+            <tr class="hover:bg-slate-50">
+              <td class="py-3 px-4 font-medium text-slate-900">${k.keyName}</td>
+              <td class="py-3 px-4 font-mono text-blue-600">
+                <span class="bg-slate-50 px-2 py-1 rounded border border-slate-200">${k.apiKey}</span>
+                <button onclick="copyToClipboard('${k.apiKey}')" class="ml-1 text-slate-400 hover:text-blue-600" title="复制Key"><i class="fa-regular fa-copy"></i></button>
+              </td>
+              <td class="py-3 px-4">${k.ownerName} <span class="text-slate-400">(${k.department})</span></td>
+              <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700">${k.allowedModels}</span></td>
+              <td class="py-3 px-4 font-mono text-slate-600">${k.tpmLimit} TPM / ${k.qpsLimit} QPS</td>
+              <td class="py-3 px-4 font-mono text-slate-600">${k.usedQuota} / ${k.totalQuota === -1 ? '∞' : k.totalQuota}</td>
+              <td class="py-3 px-4 whitespace-nowrap">
+                ${k.status === 1 ? '<span class="inline-block px-2 py-0.5 rounded text-emerald-700 bg-emerald-50 border border-emerald-200 whitespace-nowrap text-[11px] font-medium">启用</span>' : '<span class="inline-block px-2 py-0.5 rounded text-rose-700 bg-rose-50 border border-rose-200 whitespace-nowrap text-[11px] font-medium">已禁用</span>'}
+              </td>
+              <td class="py-3 px-4 text-right space-x-2 whitespace-nowrap">
+                <button onclick="toggleKeyStatus('${k.apiKey}', ${k.status === 1 ? 0 : 1})" class="text-slate-500 hover:text-blue-600">
+                  ${k.status === 1 ? '<i class="fa-solid fa-ban text-amber-500" title="禁用"></i>' : '<i class="fa-solid fa-check text-emerald-600" title="启用"></i>'}
+                </button>
+                <button onclick="deleteKey(${k.id})" class="text-slate-400 hover:text-rose-600" title="删除"><i class="fa-solid fa-trash"></i></button>
+              </td>
+            </tr>
+          `).join('');
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    async function loadDashboardStats() {
+      try {
+        const statsRes = await fetch('/api/admin/dashboard/stats').then(r => r.json());
+        if (statsRes.code === 0) {
+          document.getElementById('stat-total-tokens').innerText = Number(statsRes.data.totalTokens).toLocaleString();
+          document.getElementById('stat-total-reqs').innerText = Number(statsRes.data.totalRequests).toLocaleString();
+          document.getElementById('stat-avg-ttft').innerText = statsRes.data.avgTtftMs + " ms";
+          document.getElementById('stat-active-keys').innerText = statsRes.data.activeKeys + " / " + statsRes.data.totalKeys;
+        }
+
+        const auditsRes = await fetch('/api/admin/dashboard/audits?limit=20').then(r => r.json());
+        const tbody = document.getElementById('audit-table-body');
+        if (auditsRes.code === 0 && auditsRes.data.length > 0) {
+          tbody.innerHTML = auditsRes.data.map(a => `
+            <tr class="hover:bg-slate-50">
+              <td class="py-2.5 px-3 font-mono text-slate-500">${a.requestId}</td>
+              <td class="py-2.5 px-3 font-mono text-blue-600">${a.apiKey.substring(0, 15)}...</td>
+              <td class="py-2.5 px-3">${a.ownerName}</td>
+              <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100">${a.modelName}</span></td>
+              <td class="py-2.5 px-3 font-mono text-emerald-600 font-semibold">${a.ttftMs}ms</td>
+              <td class="py-2.5 px-3 font-mono text-slate-700">${a.totalCostMs}ms</td>
+              <td class="py-2.5 px-3 font-mono text-slate-500">${a.promptTokens} / ${a.completionTokens}</td>
+              <td class="py-2.5 px-3"><span class="px-1.5 py-0.5 rounded text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200">${a.httpStatus}</span></td>
+              <td class="py-2.5 px-3 text-slate-400">${new Date(a.createdTime).toLocaleTimeString()}</td>
+            </tr>
+          `).join('');
+        } else {
+          tbody.innerHTML = `<tr><td colspan="9" class="text-center py-6 text-slate-400">暂无调用流水日志</td></tr>`;
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    async function sendChatMessage() {
+      const inputEl = document.getElementById('chat-input');
+      const text = inputEl.value.trim();
+      if (!text) return;
+      const model = document.getElementById('chat-model-select').value;
+
+      appendChatMessage('user', text);
+      inputEl.value = '';
+
+      const botMsgEl = appendChatMessage('assistant', '<span class="animate-pulse">思考中...</span>');
+
+      try {
+        const response = await fetch('/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + DEFAULT_KEY
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: [{ role: 'user', content: text }],
+            stream: true
+          })
+        });
+
+        if (!response.ok) {
+          const err = await response.json();
+          botMsgEl.innerText = "❌ 网关错误: " + (err.error ? err.error.message : response.statusText);
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let currentText = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split("\n");
+          for (let i = 0; i < lines.length; i++) {
+            let line = lines[i].trim();
+            if (!line || line === "data: [DONE]" || line === "[DONE]") continue;
+            if (line.startsWith("data:")) {
+              line = line.replace(/^data:\s*/, "");
+            }
+            try {
+              const data = JSON.parse(line);
+              let deltaText = "";
+              if (data.choices && data.choices[0]) {
+                if (data.choices[0].delta) {
+                  deltaText = data.choices[0].delta.content || data.choices[0].delta.reasoning_content || "";
+                } else if (data.choices[0].text) {
+                  deltaText = data.choices[0].text;
+                }
+              }
+              if (deltaText) {
+                currentText += deltaText;
+                botMsgEl.textContent = currentText;
+                const container = document.getElementById('chat-messages');
+                if (container) container.scrollTop = container.scrollHeight;
+              }
+            } catch (err) {
+              // 忽略非完整 JSON
+            }
+          }
+        }
+      } catch (e) {
+        botMsgEl.textContent = "❌ 请求异常: " + e.message;
+      }
+    }
+
+    function appendChatMessage(role, content) {
+      const container = document.getElementById('chat-messages');
+      const isUser = role === 'user';
+      const div = document.createElement('div');
+      div.className = `flex items-start gap-3 ${isUser ? 'flex-row-reverse' : ''}`;
+      
+      const iconDiv = document.createElement('div');
+      iconDiv.className = `w-8 h-8 rounded-full ${isUser ? 'bg-blue-600' : 'bg-slate-700'} flex items-center justify-center text-white text-xs flex-shrink-0`;
+      iconDiv.innerHTML = `<i class="fa-solid ${isUser ? 'fa-user' : 'fa-robot'}"></i>`;
+      
+      const contentDiv = document.createElement('div');
+      contentDiv.className = `${isUser ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-slate-800 shadow-sm'} rounded-lg p-3 max-w-2xl text-xs leading-relaxed whitespace-pre-wrap`;
+      contentDiv.innerHTML = content;
+
+      div.appendChild(iconDiv);
+      div.appendChild(contentDiv);
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
+      return contentDiv;
+    }
+
+    function fillChatInput(text) {
+      document.getElementById('chat-input').value = text;
+      document.getElementById('chat-input').focus();
+    }
+
+    function clearChatHistory() {
+      document.getElementById('chat-messages').innerHTML = `
+        <div class="flex items-start gap-3">
+          <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs flex-shrink-0">
+            <i class="fa-solid fa-robot"></i>
+          </div>
+          <div class="bg-white border border-slate-200 rounded-lg p-3 max-w-2xl text-xs leading-relaxed text-slate-800 shadow-sm">
+            对话已清空，请随时输入新问题！
+          </div>
+        </div>
+      `;
+    }
+
+    async function runPromptLabTest() {
+      const model = document.getElementById('prompt-model-select').value;
+      const system = document.getElementById('prompt-system').value.trim();
+      const userText = document.getElementById('prompt-user').value.trim();
+      const temp = parseFloat(document.getElementById('param-temperature').value);
+      const topP = parseFloat(document.getElementById('param-topp').value);
+      const maxTokens = parseInt(document.getElementById('param-maxtokens').value);
+
+      if (!userText) {
+        alert("请输入 User Prompt 测试提问！");
+        return;
+      }
+
+      const outputBox = document.getElementById('prompt-output-box');
+      const statsBox = document.getElementById('prompt-meta-stats');
+      outputBox.innerText = "Connecting & Streaming...";
+      statsBox.innerText = "";
+
+      const messages = [];
+      if (system) messages.push({ role: 'system', content: system });
+      messages.push({ role: 'user', content: userText });
+
+      const startTime = Date.now();
+      let firstTokenTime = 0;
+
+      try {
+        const response = await fetch('/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + DEFAULT_KEY
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: messages,
+            stream: true,
+            temperature: temp,
+            top_p: topP,
+            max_tokens: maxTokens
+          })
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        outputBox.innerText = "";
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          if (firstTokenTime === 0) firstTokenTime = Date.now() - startTime;
+          const chunkStr = decoder.decode(value, { stream: true });
+          const lines = chunkStr.split("\n");
+          for (let line of lines) {
+            line = line.trim();
+            if (line.startsWith("data:") && !line.includes("[DONE]")) {
+              try {
+                const json = JSON.parse(line.substring(5).trim());
+                if (json.choices && json.choices[0].delta && json.choices[0].delta.content) {
+                  outputBox.innerText += json.choices[0].delta.content;
+                }
+              } catch (e) {}
+            }
+          }
+        }
+        const totalTime = Date.now() - startTime;
+        statsBox.innerText = `TTFT: ${firstTokenTime}ms | 总耗时: ${totalTime}ms`;
+      } catch (e) {
+        outputBox.innerText = "❌ 调试失败: " + e.message;
+      }
+    }
+
+    function openCreateKeyModal() { document.getElementById('modal-create-key').classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    async function submitCreateApiKey() {
+      const name = document.getElementById('new-key-name').value.trim();
+      const owner = document.getElementById('new-key-owner').value.trim();
+      const dept = document.getElementById('new-key-dept').value.trim();
+      const models = document.getElementById('new-key-models').value.trim();
+      const tpm = parseInt(document.getElementById('new-key-tpm').value);
+      const qps = parseInt(document.getElementById('new-key-qps').value);
+
+      if (!name || !owner || !dept) {
+        alert("请填写完整必填项！");
+        return;
+      }
+
+      await fetch('/api/admin/apikeys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keyName: name, ownerName: owner, department: dept, allowedModels: models, tpmLimit: tpm, qpsLimit: qps
+        })
+      });
+
+      closeModal('modal-create-key');
+      loadApiKeys();
+    }
+
+    async function toggleKeyStatus(apiKey, status) {
+      await fetch(`/api/admin/apikeys/${apiKey}/status?status=${status}`, { method: 'PUT' });
+      loadApiKeys();
+    }
+
+    async function deleteKey(id) {
+      if (!confirm("确认删除该 API Key 吗？")) return;
+      await fetch(`/api/admin/apikeys/${id}`, { method: 'DELETE' });
+      loadApiKeys();
+    }
+
+    function copyToClipboard(text) {
+      navigator.clipboard.writeText(text);
+      alert("API Key 已复制到剪贴板: " + text);
+    }
+
+    function openAddModelModal() {
+      document.getElementById('test-conn-result').classList.add('hidden');
+      document.getElementById('modal-add-model').classList.remove('hidden');
+    }
+
+    async function testCurrentModelConnection() {
+      const name = document.getElementById('new-model-name').value.trim() || 'test-model';
+      const provider = document.getElementById('new-model-provider').value;
+      const url = document.getElementById('new-model-url').value.trim();
+      const secret = document.getElementById('new-model-secret').value.trim();
+      const resultBox = document.getElementById('test-conn-result');
+
+      resultBox.className = "text-xs p-2.5 rounded bg-blue-50 text-blue-700 border border-blue-200 block";
+      resultBox.innerText = "📡 正在向目标 BaseURL 发起真实探活请求...";
+
+      try {
+        const res = await fetch('/api/admin/models/test-connection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            modelName: name,
+            providerType: provider,
+            baseUrl: url,
+            apiSecret: secret
+          })
+        }).then(r => r.json());
+
+        if (res.code === 0 && res.data.connected) {
+          resultBox.className = "text-xs p-2.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 block";
+          resultBox.innerText = `✅ 连通性测试成功！耗时: ${res.data.latencyMs}ms，上游大模型可正常接收推理请求。`;
+        } else {
+          resultBox.className = "text-xs p-2.5 rounded bg-rose-50 text-rose-700 border border-rose-200 block";
+          resultBox.innerText = `❌ 连通失败: ${res.data ? res.data.message : '网络超时或凭据错误'}`;
+        }
+      } catch (e) {
+        resultBox.className = "text-xs p-2.5 rounded bg-rose-50 text-rose-700 border border-rose-200 block";
+        resultBox.innerText = "❌ 探活异常: " + e.message;
+      }
+    }
+
+    async function submitAddModelConfig() {
+      const name = document.getElementById('new-model-name').value.trim();
+      const display = document.getElementById('new-model-display').value.trim();
+      const provider = document.getElementById('new-model-provider').value;
+      const url = document.getElementById('new-model-url').value.trim();
+      const secret = document.getElementById('new-model-secret').value.trim();
+      const fallback = document.getElementById('new-model-fallback').value.trim();
+
+      if (!name || !display) {
+        alert("请填写完整的模型标识与展示名称！");
+        return;
+      }
+
+      await fetch('/api/admin/models', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          modelName: name,
+          displayName: display,
+          providerType: provider,
+          baseUrl: url,
+          apiSecret: secret,
+          fallbackModel: fallback,
+          status: 1
+        })
+      });
+
+      closeModal('modal-add-model');
+      loadModels();
+    }
+
+    window.onload = () => {
+      // 默认打开模型开放管理页 (对应 58 灵犀 /openManagement?navMode=model)
+      switchTab('models');
+    };
+  </script>
+</body>
+</html>
