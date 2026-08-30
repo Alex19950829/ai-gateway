@@ -23,6 +23,16 @@ public class OpenAiDto {
         private Double topP;
         @JSONField(name = "max_tokens")
         private Integer maxTokens;
+        @JSONField(name = "response_format")
+        private ResponseFormat responseFormat;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ResponseFormat {
+        private String type; // text, json_object
     }
 
     @Data

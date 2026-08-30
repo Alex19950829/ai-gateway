@@ -39,10 +39,16 @@ public class ChatlingDao {
     }
 
     public int insertApiKey(ApiKey key) {
-        String sql = "INSERT INTO t_api_key (api_key, key_name, owner_name, department, allowed_models, tpm_limit, qps_limit, total_quota, used_quota, status) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO t_api_key (api_key, key_name, owner_name, department, allowed_models, tpm_limit, qps_limit, max_concurrency, qos_tier, quota_cycle, cycle_quota_limit, enable_data_masking, total_quota, used_quota, status) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         return jdbcTemplate.update(sql, key.getApiKey(), key.getKeyName(), key.getOwnerName(), key.getDepartment(),
-                key.getAllowedModels(), key.getTpmLimit(), key.getQpsLimit(), key.getTotalQuota(), key.getUsedQuota(), key.getStatus());
+                key.getAllowedModels(), key.getTpmLimit(), key.getQpsLimit(), 
+                key.getMaxConcurrency() != null ? key.getMaxConcurrency() : 5,
+                key.getQosTier() != null ? key.getQosTier() : "STANDARD",
+                key.getQuotaCycle() != null ? key.getQuotaCycle() : "MONTHLY",
+                key.getCycleQuotaLimit() != null ? key.getCycleQuotaLimit() : 1000000L,
+                key.getEnableDataMasking() != null ? key.getEnableDataMasking() : 0,
+                key.getTotalQuota(), key.getUsedQuota(), key.getStatus());
     }
 
     public int updateApiKeyStatus(String apiKey, int status) {

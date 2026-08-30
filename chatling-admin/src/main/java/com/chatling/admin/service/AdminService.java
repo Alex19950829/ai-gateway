@@ -39,6 +39,11 @@ public class AdminService {
         if (keyReq.getStatus() == null) keyReq.setStatus(1);
         if (keyReq.getTpmLimit() == null || keyReq.getTpmLimit() <= 0) keyReq.setTpmLimit(60000);
         if (keyReq.getQpsLimit() == null || keyReq.getQpsLimit() <= 0) keyReq.setQpsLimit(20);
+        if (keyReq.getMaxConcurrency() == null || keyReq.getMaxConcurrency() <= 0) keyReq.setMaxConcurrency(5);
+        if (keyReq.getQosTier() == null || keyReq.getQosTier().trim().isEmpty()) keyReq.setQosTier("STANDARD");
+        if (keyReq.getQuotaCycle() == null || keyReq.getQuotaCycle().trim().isEmpty()) keyReq.setQuotaCycle("MONTHLY");
+        if (keyReq.getCycleQuotaLimit() == null || keyReq.getCycleQuotaLimit() <= 0) keyReq.setCycleQuotaLimit(1000000L);
+        if (keyReq.getEnableDataMasking() == null) keyReq.setEnableDataMasking(0);
         if (keyReq.getTotalQuota() == null) keyReq.setTotalQuota(-1L);
         keyReq.setUsedQuota(0L);
         if (keyReq.getAllowedModels() == null || keyReq.getAllowedModels().isEmpty()) {

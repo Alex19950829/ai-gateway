@@ -8,12 +8,26 @@ CREATE TABLE IF NOT EXISTS `t_api_key` (
   `allowed_models` VARCHAR(512) NOT NULL DEFAULT '*',
   `tpm_limit` INT NOT NULL DEFAULT 60000,
   `qps_limit` INT NOT NULL DEFAULT 20,
+  `max_concurrency` INT NOT NULL DEFAULT 5,
+  `qos_tier` VARCHAR(32) NOT NULL DEFAULT 'STANDARD',
+  `quota_cycle` VARCHAR(32) NOT NULL DEFAULT 'MONTHLY',
+  `cycle_quota_limit` BIGINT NOT NULL DEFAULT 1000000,
+  `last_cycle_reset_time` BIGINT DEFAULT 0,
+  `enable_data_masking` INT NOT NULL DEFAULT 0,
   `total_quota` BIGINT NOT NULL DEFAULT -1,
   `used_quota` BIGINT NOT NULL DEFAULT 0,
   `status` INT NOT NULL DEFAULT 1,
   `created_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 自动增量迁移字段 (针对已存在的本地 H2 数据库)
+ALTER TABLE `t_api_key` ADD COLUMN IF NOT EXISTS `max_concurrency` INT NOT NULL DEFAULT 5;
+ALTER TABLE `t_api_key` ADD COLUMN IF NOT EXISTS `qos_tier` VARCHAR(32) NOT NULL DEFAULT 'STANDARD';
+ALTER TABLE `t_api_key` ADD COLUMN IF NOT EXISTS `quota_cycle` VARCHAR(32) NOT NULL DEFAULT 'MONTHLY';
+ALTER TABLE `t_api_key` ADD COLUMN IF NOT EXISTS `cycle_quota_limit` BIGINT NOT NULL DEFAULT 1000000;
+ALTER TABLE `t_api_key` ADD COLUMN IF NOT EXISTS `last_cycle_reset_time` BIGINT DEFAULT 0;
+ALTER TABLE `t_api_key` ADD COLUMN IF NOT EXISTS `enable_data_masking` INT NOT NULL DEFAULT 0;
 
 -- 2. 模型配置与路由表
 CREATE TABLE IF NOT EXISTS `t_model_config` (
@@ -71,9 +85,9 @@ KEY(`id`) VALUES
 (6, 'deepseek-chat', 'DeepSeek-V3 官方商业大模型', 'deepseek', 'https://api.deepseek.com', 'your_deepseek_api_key_here', 'glm-4-flash', 60000, 1, 'DeepSeek 官方商业旗舰模型，拥有极强代码与中文推理能力');
 
 -- 初始化默认管理员测试 Key (已开通全部 6 大模型权限)
-MERGE INTO `t_api_key` (`id`, `api_key`, `key_name`, `owner_name`, `department`, `allowed_models`, `tpm_limit`, `qps_limit`, `total_quota`, `used_quota`, `status`) 
+MERGE INTO `t_api_key` (`id`, `api_key`, `key_name`, `owner_name`, `department`, `allowed_models`, `tpm_limit`, `qps_limit`, `max_concurrency`, `qos_tier`, `quota_cycle`, `cycle_quota_limit`, `enable_data_masking`, `total_quota`, `used_quota`, `status`) 
 KEY(`api_key`) VALUES 
-(1, 'sk-chatling-admin-demo888', '系统演示体验Key', 'admin', 'AI研发部', 'glm-4-flash,qwen-plus,gemini-2.5-flash,moonshot-v1-8k,ep-m-20260414104415-9rcgn,deepseek-chat', 100000, 50, 10000000, 3250, 1);
+(1, 'sk-chatling-admin-demo888', '系统演示体验Key', 'admin', 'AI研发部', 'glm-4-flash,qwen-plus,gemini-2.5-flash,moonshot-v1-8k,ep-m-20260414104415-9rcgn,deepseek-chat', 100000, 50, 10, 'VIP', 'MONTHLY', 10000000, 1, 10000000, 3250, 1);
 
 -- 5. 模型权限审批工单表
 CREATE TABLE IF NOT EXISTS `t_model_apply` (
