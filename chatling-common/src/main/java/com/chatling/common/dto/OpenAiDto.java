@@ -25,6 +25,11 @@ public class OpenAiDto {
         private Integer maxTokens;
         @JSONField(name = "response_format")
         private ResponseFormat responseFormat;
+
+        // 🌟 核心支持：Agent 插件与 Function Calling 工具定义
+        private List<Object> tools;
+        @JSONField(name = "tool_choice")
+        private Object toolChoice;
     }
 
     @Data
@@ -42,6 +47,11 @@ public class OpenAiDto {
     public static class ChatMessage {
         private String role;
         private String content;
+        private String name;
+        @JSONField(name = "tool_call_id")
+        private String toolCallId;
+        @JSONField(name = "tool_calls")
+        private List<Object> toolCalls;
     }
 
     @Data
@@ -111,5 +121,9 @@ public class OpenAiDto {
     public static class Delta {
         private String role;
         private String content;
+        @JSONField(name = "tool_calls")
+        private List<Object> toolCalls;
+        @JSONField(name = "reasoning_content")
+        private String reasoningContent;
     }
 }

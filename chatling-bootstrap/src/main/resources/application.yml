@@ -19,4 +19,12 @@ chatling:
     mock-enabled-if-no-key: true
     default-tpm: 60000
     default-qps: 20
+  security:
+    aliyun:
+      enabled: true
+      access-key-id: ${ALIYUN_ACCESS_KEY_ID:}
+      access-key-secret: ${ALIYUN_ACCESS_KEY_SECRET:}
+      region-id: cn-shanghai
+      service: chat_detection
+
 

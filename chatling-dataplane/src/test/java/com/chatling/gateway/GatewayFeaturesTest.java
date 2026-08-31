@@ -1,6 +1,6 @@
 package com.chatling.gateway;
 
-import com.chatling.gateway.cache.PromptCacheService;
+import com.chatling.engine.cache.PromptCacheService;
 import com.chatling.gateway.filter.ContentGuardrailFilter;
 import com.chatling.gateway.lb.ModelLoadBalancer;
 import org.junit.jupiter.api.Test;

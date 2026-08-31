@@ -1,10 +1,11 @@
-package com.chatling.gateway.cache;
+package com.chatling.engine.cache;
 
 import com.alibaba.fastjson2.JSON;
 import com.chatling.common.dto.OpenAiDto;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -18,9 +19,9 @@ import java.util.concurrent.TimeUnit;
  * 精准 Prompt 哈希缓存加速器 (Exact Prompt Cache)
  * 对相同 Prompt 提问直接由网关毫秒级流式回放，Token 消耗记为 0，极大降低算力成本与延迟
  */
-@Slf4j
 @Service
 public class PromptCacheService {
+    private static final Logger log = LoggerFactory.getLogger(PromptCacheService.class);
 
     // 内存缓存: hashKey -> 完整的模型响应文本内容
     private final Cache<String, CachedResponse> cache = Caffeine.newBuilder()
@@ -42,6 +43,27 @@ public class PromptCacheService {
         public String getFullText() { return fullText; }
         public int getPromptTokens() { return promptTokens; }
         public int getCompletionTokens() { return completionTokens; }
+    }
+
+    /**
+     * 计算 model + prompt SHA-256 哈希
+     */
+    public String calculateHash(String model, String prompt) {
+        if (prompt == null || prompt.trim().isEmpty()) {
+            return null;
+        }
+        String content = (model != null ? model : "default") + "|" + prompt;
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(content.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder();
+            for (byte b : hash) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.toString();
+        } catch (Exception e) {
+            return String.valueOf(content.hashCode());
+        }
     }
 
     /**
@@ -69,18 +91,19 @@ public class PromptCacheService {
     }
 
     public CachedResponse get(String hashKey) {
+        if (hashKey == null) return null;
         return cache.getIfPresent(hashKey);
     }
 
     public void put(String hashKey, String fullText, int promptTokens, int completionTokens) {
         if (hashKey != null && fullText != null && !fullText.trim().isEmpty()) {
             cache.put(hashKey, new CachedResponse(fullText, promptTokens, completionTokens));
-            log.info("Cached prompt response for hash: {}, length: {}", hashKey.substring(0, 8), fullText.length());
+            log.info("Cached prompt response for hash: {}, length: {}", hashKey.substring(0, Math.min(8, hashKey.length())), fullText.length());
         }
     }
 
     /**
-     * 针对命中的缓存，构建急速打字机流式输出 (每 15ms 输出一个词，TTFT < 20ms)
+     * 针对命中的缓存，构建极速打字机流式输出 (每 15ms 输出一个词，TTFT < 20ms)
      */
     public Flux<OpenAiDto.ChatCompletionChunk> createCachedStream(String model, String fullText) {
         String reqId = "chatcmpl-cache-" + UUID.randomUUID().toString().substring(0, 8);

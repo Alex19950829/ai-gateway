@@ -49,12 +49,19 @@ public class OpenAiCompatibleAdapter implements ModelAdapter {
     public Flux<OpenAiDto.ChatCompletionChunk> streamChat(ModelConfig config, OpenAiDto.ChatCompletionRequest request) {
         WebClient client = buildClient(config);
         request.setStream(true);
-        // 如果是火山方舟，将 model 字段替换为配置的 Endpoint ID
-        if (config.getModelName() != null && !config.getModelName().isEmpty()) {
+        // 如果是火山方舟，将逻辑模型名在发送给上游前动态映射为真实的物理推理接入点 Endpoint ID
+        if ("volcengine".equalsIgnoreCase(config.getProviderType()) || "ark".equalsIgnoreCase(config.getProviderType())) {
+            if ("ark-code-latest".equalsIgnoreCase(config.getModelName()) || "doubao-coding-plan".equalsIgnoreCase(config.getModelName())) {
+                request.setModel("ep-m-20260414104415-9rcgn");
+            } else {
+                request.setModel(config.getModelName());
+            }
+        } else if (config.getModelName() != null && !config.getModelName().isEmpty()) {
             request.setModel(config.getModelName());
         }
 
-        log.info("Sending REAL SSE request to upstream: {}/chat/completions (model={})", config.getBaseUrl(), config.getModelName());
+        log.info("Sending REAL SSE request to upstream: {}/chat/completions (logicalModel={}, upstreamEndpoint={})",
+                config.getBaseUrl(), config.getModelName(), request.getModel());
 
         return client.post()
                 .uri("/chat/completions")
@@ -94,15 +101,20 @@ public class OpenAiCompatibleAdapter implements ModelAdapter {
                                             if (deltaObj != null) {
                                                 String content = deltaObj.getString("content");
                                                 String reasoning = deltaObj.getString("reasoning_content");
+                                                com.alibaba.fastjson2.JSONArray toolCalls = deltaObj.getJSONArray("tool_calls");
                                                 String effectiveText = (content != null && !content.isEmpty()) ? content : reasoning;
-                                                if (effectiveText != null && !effectiveText.isEmpty()) {
+                                                if ((effectiveText != null && !effectiveText.isEmpty()) || (toolCalls != null && !toolCalls.isEmpty())) {
                                                     return Flux.just(OpenAiDto.ChatCompletionChunk.builder()
                                                             .id(root.getString("id"))
                                                             .model(root.getString("model"))
                                                             .choices(Collections.singletonList(
                                                                     OpenAiDto.ChunkChoice.builder()
                                                                             .index(0)
-                                                                            .delta(OpenAiDto.Delta.builder().content(effectiveText).build())
+                                                                            .delta(OpenAiDto.Delta.builder()
+                                                                                    .content(effectiveText)
+                                                                                    .toolCalls(toolCalls != null ? toolCalls.toJavaList(Object.class) : null)
+                                                                                    .reasoningContent(reasoning)
+                                                                                    .build())
                                                                             .build()
                                                             ))
                                                             .build());
