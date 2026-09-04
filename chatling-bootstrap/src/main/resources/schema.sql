@@ -86,7 +86,7 @@ KEY(`model_name`) VALUES
 ('moonshot-v1-8k', 'Kimi (月之暗面 Moonshot-v1-8k)', 'openai', 'https://api.moonshot.cn/v1', 'your_moonshot_api_key_here', 'glm-4-flash', 60000, 1, '月之暗面 Kimi 官方商用模型，拥有超强中文理解与长文本推理能力'),
 ('deepseek-chat', 'DeepSeek-V3 官方商业大模型', 'deepseek', 'https://api.deepseek.com', 'your_deepseek_api_key_here', 'glm-4-flash', 60000, 1, 'DeepSeek 官方商业旗舰模型，拥有极强代码与中文推理能力'),
 ('ark-code-latest', '火山方舟 Coding Plan (DeepSeek/Doubao)', 'volcengine', 'https://ark.cn-beijing.volces.com/api/v3', 'your_volcengine_api_key_here', 'glm-4-flash', 60000, 1, '火山引擎方舟 Coding Plan 官方专属推理接入点'),
-('chatling-turbo', '灵犀自研大模型 (ChatLing-Turbo)', 'mock', 'http://127.0.0.1:8088/mock', 'mock_key', 'glm-4-flash', 60000, 1, '灵犀自研高性能轻量化大语言模型');
+('chatling-turbo', '58 Chatling 官方大模型服务 (chatgpt.58corp.com)', 'chatling', 'http://chatgpt.58corp.com/api/v1', '5a1565db97bf84e746491fe5d0d13ed6', 'glm-4-flash', 60000, 1, '58集团 Chatling 官方自研生产级大模型在线服务');
 
 -- 初始化默认管理员测试 Key (已开通全部模型权限: allowed_models = '*', 1000万 TPM 超大算力)
 MERGE INTO `t_api_key` (`id`, `api_key`, `key_name`, `owner_name`, `department`, `allowed_models`, `tpm_limit`, `qps_limit`, `max_concurrency`, `qos_tier`, `quota_cycle`, `cycle_quota_limit`, `enable_data_masking`, `total_quota`, `used_quota`, `status`) 

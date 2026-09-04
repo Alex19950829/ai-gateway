@@ -32,6 +32,7 @@ public class OpenAiCompatibleAdapter implements ModelAdapter {
     @Override
     public boolean supports(String providerType) {
         return "openai".equalsIgnoreCase(providerType)
+                || "chatling".equalsIgnoreCase(providerType)
                 || "vllm".equalsIgnoreCase(providerType)
                 || "sglang".equalsIgnoreCase(providerType)
                 || "ollama".equalsIgnoreCase(providerType)
@@ -98,6 +99,11 @@ public class OpenAiCompatibleAdapter implements ModelAdapter {
                                         if (choicesArr != null && !choicesArr.isEmpty()) {
                                             com.alibaba.fastjson2.JSONObject firstChoice = choicesArr.getJSONObject(0);
                                             com.alibaba.fastjson2.JSONObject deltaObj = firstChoice.getJSONObject("delta");
+                                            if (deltaObj == null) {
+                                                // 兼容部分大模型厂商/内网平台（如 58 Chatling）在 chunk 中使用 message 字段
+                                                deltaObj = firstChoice.getJSONObject("message");
+                                            }
+
                                             if (deltaObj != null) {
                                                 String content = deltaObj.getString("content");
                                                 String reasoning = deltaObj.getString("reasoning_content");
@@ -115,6 +121,7 @@ public class OpenAiCompatibleAdapter implements ModelAdapter {
                                                                                     .toolCalls(toolCalls != null ? toolCalls.toJavaList(Object.class) : null)
                                                                                     .reasoningContent(reasoning)
                                                                                     .build())
+                                                                            .finishReason(firstChoice.getString("finish_reason"))
                                                                             .build()
                                                             ))
                                                             .build());
